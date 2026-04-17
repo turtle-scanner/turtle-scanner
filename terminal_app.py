@@ -3,6 +3,8 @@ import pandas as pd
 import yfinance as yf
 from datetime import datetime
 import os
+import pytz
+
 
 # 1. 암호 보안 설정 (암호: 1353)
 def check_password():
@@ -16,7 +18,7 @@ def check_password():
     st.markdown("<h1 style='text-align: center; color: #FFFFFF;'>🔐 Anti-Gravity Private Terminal</h1>", unsafe_allow_html=True)
     password = st.text_input("Access Code를 입력하십시오.", type="password")
     if st.button("Unlock"):
-        if password == "1353":
+        if password == "6431353":
             st.session_state["password_correct"] = True
             st.rerun()
         else:
@@ -26,16 +28,86 @@ def check_password():
 if check_password():
     # 사이드바 레이아웃 및 페이지 네비게이션
     st.sidebar.title("💎 Master Menu")
+
+    # 실시간 시간 표시 (한국 & 미국)
+    kst = pytz.timezone('Asia/Seoul')
+    est = pytz.timezone('US/Eastern')
+    now_kst = datetime.now(kst)
+    now_est = datetime.now(est)
+
+    st.sidebar.markdown(f"""
+        <div style='background-color: #1e2129; padding: 15px; border-radius: 10px; border: 1px solid #3d4450; margin-bottom: 20px;'>
+            <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;'>
+                <span style='font-size: 12px; color: #8a94a6;'>🇰🇷 KOREA (KST)</span>
+                <span style='font-size: 10px; color: #4ade80;'>LIVE</span>
+            </div>
+            <div style='font-size: 18px; color: #ffffff; font-family: monospace; font-weight: bold;'>{now_kst.strftime('%H:%M:%S')}</div>
+            <div style='font-size: 12px; color: #5c6370;'>{now_kst.strftime('%Y-%m-%d')}</div>
+            <hr style='margin: 10px 0; border: none; border-top: 1px solid #3d4450;'>
+            <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;'>
+                <span style='font-size: 12px; color: #8a94a6;'>🇺🇸 USA (ET)</span>
+                <span style='font-size: 10px; color: #4ade80;'>MARKET</span>
+            </div>
+            <div style='font-size: 18px; color: #ffffff; font-family: monospace; font-weight: bold;'>{now_est.strftime('%H:%M:%S')}</div>
+            <div style='font-size: 12px; color: #5c6370;'>{now_est.strftime('%Y-%m-%d')}</div>
+        </div>
+    """, unsafe_allow_html=True)
+
     page = st.sidebar.radio("Go to", ["1. 주도주 타점 스캐너", "2. 차트 열공실", "3. Pradeep Bonde", "4. William O'Neil", "5. Mark Minervini"])
 
-    # 공통 스타일 설정 (흰색 굵은 글씨 및 다크마크 친화적 카드)
+    # 공통 스타일 설정 (블랙 & 화이트 & 옐로우 포인트)
     st.markdown("""
         <style>
-        .main { background-color: #0e1117; }
-        .stMarkdown, .stText, p, h1, h2, h3, span, td, th { color: #FFFFFF !important; font-weight: bold !important; }
-        .stTable { background-color: #262730; border-radius: 10px; }
-        div[data-testid="stTabs"] button { font-weight: 800 !important; font-size: 18px !important; color: #FFFFFF !important; }
-        div[data-testid="stMetricValue"] { color: #FFFFFF !important; font-weight: 900 !important; }
+        /* 전체 배경 및 폰트 설정 */
+        .main, .stApp, [data-testid="stSidebar"], [data-testid="stHeader"] { 
+            background-color: #000000 !important; 
+        }
+        
+        /* 기본 텍스트 흰색 */
+        .stMarkdown, .stText, p, span, td, th, li { 
+            color: #FFFFFF !important; 
+        }
+        
+        /* 헤더 및 중요 텍스트 노란색 */
+        h1, h2, h3, [data-testid="stMetricLabel"] { 
+            color: #FFFF00 !important; 
+            font-weight: 900 !important;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        /* 표 스타일 */
+        .stTable { 
+            background-color: #000000; 
+            border: 1px solid #333333;
+            border-radius: 10px; 
+        }
+        
+        /* 탭 스타일 */
+        div[data-testid="stTabs"] button { 
+            font-weight: 800 !important; 
+            font-size: 18px !important; 
+            color: #FFFFFF !important; 
+        }
+        div[data-testid="stTabs"] button[aria-selected="true"] { 
+            color: #FFFF00 !important; 
+            border-bottom-color: #FFFF00 !important;
+        }
+        
+        /* 메트릭 값 노란색 */
+        div[data-testid="stMetricValue"] { 
+            color: #FFFF00 !important; 
+            font-weight: 900 !important; 
+        }
+        
+        /* 사이드바 메뉴 */
+        [data-testid="stSidebarNav"] {
+            background-color: #000000 !important;
+        }
+
+        /* 굵은 글씨 강조 (노란색) */
+        strong, b {
+            color: #FFFF00 !important;
+        }
         </style>
     """, unsafe_allow_html=True)
 
