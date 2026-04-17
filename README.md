@@ -1,4 +1,4 @@
-# Anti-Gravity Private Terminal 💎
+# Stock Alpha Lab (Bonde Edition)💎
 
 A powerful investment terminal and counseling study system designed for premium users.
 
