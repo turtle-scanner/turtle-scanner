@@ -53,7 +53,7 @@ if check_password():
         </div>
     """, unsafe_allow_html=True)
 
-    page = st.sidebar.radio("Go to", ["1. 주도주 타점 스캐너", "2. 차트 열공실", "3. Pradeep Bonde", "4. William O'Neil", "5. Mark Minervini"])
+    page = st.sidebar.radio("Go to", ["1. 주도주 타점 스캐너", "2. 차트 열공실", "3. Pradeep Bonde", "4. William O'Neil", "5. Mark Minervini", "6. 본데 주식 50선"])
 
     # 공통 스타일 설정 (블랙 & 화이트 & 옐로우 포인트)
     st.markdown("""
@@ -273,7 +273,30 @@ if check_password():
         st.subheader("🎙️ 미너비니의 명언 (Master's Advice)")
         st.error('"당신이 틀렸을 때 가장 적게 잃는 법을 배우십시오. 그것이 주식 시장에서 살아남는 유일한 방법입니다."\n\n"테니스공처럼 튀어 오르는 주식을 사십시오. 바닥에서 바들바들 떠는 달걀 같은 주식은 쳐다보지도 마십시오."')
 
-    # 하단 고정 테마 (AI 생성 이미지 연동)
+    elif page == "6. 본데 주식 50선":
+        st.header("📊 본데의 주식 50선 (Google Sheets 연동)")
+        st.write("구글 스프레드시트에서 실시간으로 데이터를 불러옵니다.")
+        
+        sheet_id = "1xjbe9SF0HsxwY_Uy3NC2tT92BqK0nhArUaYU16Q0p9M"
+        gid = "1499398020"
+        csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}"
+        
+        try:
+            df = pd.read_csv(csv_url)
+            st.dataframe(df, use_container_width=True)
+            st.success("✅ 데이터를 성공적으로 불러왔습니다.")
+            
+            # 엑셀 다운로드 버튼 추가
+            csv = df.to_csv(index=False).encode('utf-8-sig')
+            st.download_button(
+                label="📥 엑셀(CSV) 파일로 저장",
+                data=csv,
+                file_name='bonde_top_50.csv',
+                mime='text/csv',
+            )
+        except Exception as e:
+            st.error(f"데이터를 불러오는 중 오류가 발생했습니다: {e}")
+            st.info("시트가 공개되어 있는지 확인해 주세요.")
     st.sidebar.markdown("---")
     st.sidebar.write("거북이투자전문가 전용 터미널")
     
