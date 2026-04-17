@@ -70,19 +70,22 @@ if check_password():
             background-color: #000000 !important; 
         }
         
-        /* 모든 텍스트 노란색 강제 적용 (입력창 제외) */
-        .stMarkdown, p, span, td, th, li, div, label {
-            color: #FFFF00 !important;
+        /* 일반 텍스트 흰색 설정 */
+        .stMarkdown, p, span, td, th, li, div:not([data-baseweb="select"] *) {
+            color: #FFFFFF !important;
             font-family: 'Courier New', Courier, monospace !important;
         }
 
-        /* 입력 위젯 가독성 확보 (검정색 글씨) */
+        /* 중요 정보 및 입력창 노란색 강조 */
+        h1, h2, h3, h4, h5, h6, 
+        [data-testid="stMetricValue"], [data-testid="stMetricLabel"],
         input, select, textarea, [data-baseweb="select"] * {
-            color: #000000 !important;
+            color: #FFFF00 !important;
+            text-shadow: 0 0 5px rgba(255, 255, 0, 0.3) !important;
         }
 
-        /* 메트릭 및 위젯 예외 처리 (노란색 유지) */
-        [data-testid="stMetricValue"], [data-testid="stMetricLabel"] {
+        /* 사이드바 텍스트 노란색 유지 */
+        [data-testid="stSidebar"] * {
             color: #FFFF00 !important;
         }
 
@@ -125,14 +128,16 @@ if check_password():
         st.markdown("<h1 style='white-space: nowrap;'>🎯 Bonde-Turtle Terminal</h1>", unsafe_allow_html=True)
         st.markdown("<h3 style='color: #FFFF00; opacity: 0.9;'>✨ 실시간 시장 데이터 기반 주도주 포착</h3>", unsafe_allow_html=True)
         
+        # --- 종목명 매핑 사전 ---
+        ticker_map = {
+            "NVDA": "엔비디아", "TSLA": "테슬라", "AAPL": "애플", "MSFT": "마이크로소프트", "AMD": "AMD",
+            "SMCI": "슈퍼마이크로", "CELH": "셀시어스", "PLTR": "팔란티어", "HOOD": "로빈후드", "CRWD": "크라우드스트라이크",
+            "005930.KS": "삼성전자", "000660.KS": "SK하이닉스", "196170.KQ": "알테오젠", "042700.KS": "한미반도체",
+            "007660.KS": "이수페타시스", "003230.KS": "삼양식품", "015860.KS": "일진홀딩스", "322000.KS": "씨앤씨인터"
+        }
+
         # --- 리얼타임 스캐너 엔진 로직 ---
         def get_scanner_data(tickers):
-            ticker_map = {
-                "NVDA": "엔비디아", "TSLA": "테슬라", "AAPL": "애플", "MSFT": "마이크로소프트", "AMD": "AMD",
-                "SMCI": "슈퍼마이크로", "CELH": "셀시어스", "PLTR": "팔란티어", "HOOD": "로빈후드", "CRWD": "크라우드스트라이크",
-                "005930.KS": "삼성전자", "000660.KS": "SK하이닉스", "196170.KQ": "알테오젠", "042700.KS": "한미반도체",
-                "007660.KS": "이수페타시스", "003230.KS": "삼양식품", "015860.KS": "일진홀딩스", "322000.KS": "씨앤씨인터"
-            }
             results = []
             for ticker in tickers:
                 try:
@@ -365,8 +370,14 @@ if check_password():
             if 'scanner_df' in st.session_state:
                 mb_df = st.session_state['scanner_df'][st.session_state['scanner_df']['_change_val'] >= 4].sort_values(by='_change_val', ascending=False)
                 if not mb_df.empty:
-                    st.dataframe(mb_df.drop(columns=['_change_val', '_vol_val']), use_container_width=True, hide_index=True)
-                    st.session_state['selected_ticker'] = st.selectbox("상세 분석할 종목 선택 (MB)", mb_df['Ticker'].tolist())
+                    # Ticker 컬럼은 숨기고 Name을 앞에 배치
+                    display_df = mb_df[['Name', 'Price', 'Change', 'Vol Ratio', 'Position']]
+                    st.dataframe(display_df, use_container_width=True, hide_index=True)
+                    st.session_state['selected_ticker'] = st.selectbox(
+                        "상세 분석할 종목 선택 (MB)", 
+                        mb_df['Ticker'].tolist(),
+                        format_func=lambda x: ticker_map.get(x, x)
+                    )
                     render_ticker_report(st.session_state['selected_ticker'])
                 else: st.warning("조건을 만족하는 종목이 없습니다.")
 
@@ -375,8 +386,13 @@ if check_password():
             if 'scanner_df' in st.session_state:
                 ep_df = st.session_state['scanner_df'][st.session_state['scanner_df']['_vol_val'] >= 2.5].sort_values(by='_vol_val', ascending=False)
                 if not ep_df.empty:
-                    st.dataframe(ep_df.drop(columns=['_change_val', '_vol_val']), use_container_width=True, hide_index=True)
-                    st.session_state['selected_ticker'] = st.selectbox("상세 분석할 종목 선택 (EP)", ep_df['Ticker'].tolist())
+                    display_df = ep_df[['Name', 'Price', 'Change', 'Vol Ratio', 'Position']]
+                    st.dataframe(display_df, use_container_width=True, hide_index=True)
+                    st.session_state['selected_ticker'] = st.selectbox(
+                        "상세 분석할 종목 선택 (EP)", 
+                        ep_df['Ticker'].tolist(),
+                        format_func=lambda x: ticker_map.get(x, x)
+                    )
                     render_ticker_report(st.session_state['selected_ticker'])
                 else: st.info("조건을 만족하는 종목이 없습니다.")
 
@@ -390,8 +406,13 @@ if check_password():
                 df['_pos_val'] = df['Position'].apply(parse_pos)
                 anti_df = df[(df['_change_val'].abs() <= 1.5) & (df['_vol_val'] <= 1.0) & (df['_pos_val'] >= -15.0)].sort_values(by='_vol_val', ascending=True)
                 if not anti_df.empty:
-                    st.dataframe(anti_df.drop(columns=['_change_val', '_vol_val', '_pos_val']), use_container_width=True, hide_index=True)
-                    st.session_state['selected_ticker'] = st.selectbox("상세 분석할 종목 선택 (Anti)", anti_df['Ticker'].tolist())
+                    display_df = anti_df[['Name', 'Price', 'Change', 'Vol Ratio', 'Position']]
+                    st.dataframe(display_df, use_container_width=True, hide_index=True)
+                    st.session_state['selected_ticker'] = st.selectbox(
+                        "상세 분석할 종목 선택 (Anti)", 
+                        anti_df['Ticker'].tolist(),
+                        format_func=lambda x: ticker_map.get(x, x)
+                    )
                     render_ticker_report(st.session_state['selected_ticker'])
                 else: st.info("조건을 만족하는 종목이 없습니다.")
 
