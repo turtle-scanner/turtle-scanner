@@ -70,10 +70,15 @@ if check_password():
             background-color: #000000 !important; 
         }
         
-        /* 모든 텍스트 노란색 강제 적용 */
-        * {
+        /* 모든 텍스트 노란색 강제 적용 (입력창 제외) */
+        .stMarkdown, p, span, td, th, li, div, label {
             color: #FFFF00 !important;
             font-family: 'Courier New', Courier, monospace !important;
+        }
+
+        /* 입력 위젯 가독성 확보 (검정색 글씨) */
+        input, select, textarea, [data-baseweb="select"] * {
+            color: #000000 !important;
         }
 
         /* 메트릭 및 위젯 예외 처리 (노란색 유지) */
