@@ -134,6 +134,12 @@ if check_password():
         
         # --- 리얼타임 스캐너 엔진 로직 ---
         def get_scanner_data(tickers):
+            ticker_map = {
+                "NVDA": "엔비디아", "TSLA": "테슬라", "AAPL": "애플", "MSFT": "마이크로소프트", "AMD": "AMD",
+                "SMCI": "슈퍼마이크로", "CELH": "셀시어스", "PLTR": "팔란티어", "HOOD": "로빈후드", "CRWD": "크라우드스트라이크",
+                "005930.KS": "삼성전자", "000660.KS": "SK하이닉스", "196170.KQ": "알테오젠", "042700.KS": "한미반도체",
+                "007660.KS": "이수페타시스", "003230.KS": "삼양식품", "015860.KS": "일진홀딩스", "322000.KS": "씨앤씨인터"
+            }
             results = []
             for ticker in tickers:
                 try:
@@ -158,7 +164,7 @@ if check_password():
                     
                     results.append({
                         "Ticker": ticker,
-                        "Name": ticker, # info 요청 생략으로 속도 향상
+                        "Name": ticker_map.get(ticker, ticker), # 매핑된 이름 사용
                         "Price": f"${current_price:.2f}" if any(c.isalpha() for c in ticker) else f"{int(current_price):,}원",
                         "Change": f"{change_pct:+.2f}%",
                         "Vol Ratio": f"{vol_ratio:.2f}x",
