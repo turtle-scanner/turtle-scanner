@@ -181,7 +181,10 @@ if check_password():
                     all_tickers = us_tickers + kr_tickers
                     df_scan = get_scanner_data(all_tickers)
                     st.session_state['scanner_df'] = df_scan
-                    st.success("✅ 분석 완료! 최신 주도주 데이터를 불러왔습니다.")
+                    if df_scan.empty:
+                        st.warning("⚠️ 시장 데이터를 불러오지 못했습니다. 잠시 후 다시 시도하거나 네트워크 연결을 확인하세요.")
+                    else:
+                        st.success(f"✅ 분석 완료! {len(df_scan)}개의 주도주 데이터를 불러왔습니다.")
         with col_scan2:
             st.info("💡 종목명을 클릭하면 차트 분석(준비중)이 가능합니다.")
 
@@ -192,9 +195,10 @@ if check_password():
         if 'scanner_df' in st.session_state:
             # 시장 강도 계산 (52주 고점 근처 종목 비율)
             df = st.session_state['scanner_df']
-            high_count = len(df[df['Position'] == "신고가"])
-            total_count = len(df)
-            market_score = (high_count / total_count) * 100 if total_count > 0 else 0
+            if not df.empty and 'Position' in df.columns:
+                high_count = len(df[df['Position'] == "신고가"])
+                total_count = len(df)
+                market_score = (high_count / total_count) * 100 if total_count > 0 else 0
         
         signal_color = "🟢" if market_score > 30 else "🟡" if market_score > 10 else "🔴"
         signal_text = "위험 회피 해제 (공격적 매수)" if market_score > 30 else "관망 및 선별 매매" if market_score > 10 else "위험 관리 (현금 비중 확대)"
