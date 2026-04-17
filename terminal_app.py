@@ -301,7 +301,11 @@ if check_password():
                 try:
                     with st.spinner("차트를 생성 중입니다..."):
                         # 데이터 로드 (1년치로 확장하여 지표 정확도 향상)
-                        data = yf.download(selected_ticker, period="1y")
+                        data = yf.download(selected_ticker, period="1y", progress=False)
+                        
+                        # yfinance v0.2.x+ 멀티인덱스 컬럼 처리
+                        if isinstance(data.columns, pd.MultiIndex):
+                            data.columns = data.columns.get_level_values(0)
                         
                         # 지표 계산
                         data['MA50'] = data['Close'].rolling(window=50).mean()
@@ -562,10 +566,32 @@ if check_password():
         ticker = st.text_input("분석할 티커를 입력하세요 (예: NVDA, 005930.KS)", "NVDA")
         if ticker:
             try:
-                data = yf.download(ticker, period="1y")
-                fig = go.Figure(data=[go.Candlestick(x=data.index, open=data['Open'], high=data['High'], low=data['Low'], close=data['Close'])])
-                fig.update_layout(template='plotly_dark', title=f"{ticker} 실시간 차트", xaxis_rangeslider_visible=False)
-                st.plotly_chart(fig, use_container_width=True)
+                with st.spinner("데이터를 불러오는 중..."):
+                    data = yf.download(ticker, period="1y", progress=False)
+                    
+                    if data.empty:
+                        st.error("❌ 데이터를 찾을 수 없습니다. 티커를 확인해 주세요.")
+                    else:
+                        # yfinance v0.2.x+ 멀티인덱스 컬럼 처리
+                        if isinstance(data.columns, pd.MultiIndex):
+                            data.columns = data.columns.get_level_values(0)
+                        
+                        fig = go.Figure(data=[go.Candlestick(
+                            x=data.index,
+                            open=data['Open'],
+                            high=data['High'],
+                            low=data['Low'],
+                            close=data['Close'],
+                            name='Price'
+                        )])
+                        
+                        fig.update_layout(
+                            template='plotly_dark',
+                            title=f"{ticker} 실시간 차트",
+                            xaxis_rangeslider_visible=False,
+                            height=600
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
             except Exception as e:
                 st.error(f"차트를 불러올 수 없습니다: {e}")
     st.sidebar.markdown("---")
