@@ -76,12 +76,16 @@ if check_password():
             font-family: 'Courier New', Courier, monospace !important;
         }
 
-        /* 중요 정보 및 입력창 노란색 강조 */
+        /* 중요 정보 노란색 강조 */
         h1, h2, h3, h4, h5, h6, 
-        [data-testid="stMetricValue"], [data-testid="stMetricLabel"],
-        input, select, textarea, [data-baseweb="select"] * {
+        [data-testid="stMetricValue"], [data-testid="stMetricLabel"] {
             color: #FFFF00 !important;
             text-shadow: 0 0 5px rgba(255, 255, 0, 0.3) !important;
+        }
+
+        /* 입력 위젯 가독성 확보 (검정색 글씨) */
+        input, select, textarea, [data-baseweb="select"] * {
+            color: #000000 !important;
         }
 
         /* 사이드바 텍스트 노란색 유지 */
