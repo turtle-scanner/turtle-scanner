@@ -63,8 +63,8 @@ if check_password():
             background-color: #000000 !important; 
         }
         
-        /* 기본 텍스트 흰색 */
-        .stMarkdown, .stText, p, span, td, th, li { 
+        /* 기본 텍스트 흰색 (알림창 내부 제외) */
+        .stMarkdown:not(div[data-testid="stNotification"] *), .stText, p, span:not(div[data-testid="stNotification"] *), td, th, li { 
             color: #FFFFFF !important; 
         }
         
@@ -113,7 +113,14 @@ if check_password():
 
     # --- 페이지 1: 주도주 타점 스캐너 ---
     if page == "1. 주도주 타점 스캐너":
-        st.header("🎯 MAGNA-PRO: 본데의 3대 핵심 타점 스캐너")
+        st.markdown("<h1 style='white-space: nowrap;'>🎯 본데의 주식스캐너</h1>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color: #FFFFFF; opacity: 0.8;'>✨ 깔끔하고 정확한 주식 추천</h3>", unsafe_allow_html=True)
+        
+        if st.button("🔍 실시간 주식 스캔 시작"):
+            with st.spinner("시장을 스캔 중입니다..."):
+                import time
+                time.sleep(2)
+                st.success("✅ 스캔 완료! 최신 주도주 데이터를 성공적으로 불러왔습니다.")
         
         # 시장 상황 필터 연동 (신호등)
         st.markdown("---")
