@@ -341,6 +341,29 @@ if check_password():
                     
                     fig.update_layout(template='plotly_dark', height=500, showlegend=True, xaxis_rangeslider_visible=False, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                     st.plotly_chart(fig, use_container_width=True)
+                    
+                    # RSI 요약
+                    curr_rsi = data['RSI'].iloc[-1]
+                    rsi_status = "과매수 (경계)" if curr_rsi > 70 else "과매도 (기회)" if curr_rsi < 30 else "중립"
+                    st.write(f"📊 **현재 RSI:** {curr_rsi:.1f} ({rsi_status})")
+                    
+                    # --- AI 뉴스 분석 통합 ---
+                    st.markdown("---")
+                    st.write("### 🤖 AI 뉴스 감성 분석")
+                    news = stock_obj.news
+                    if news:
+                        for item in news[:3]:
+                            title = item['title']
+                            sentiment = "Positive 🟢" if any(w in title.lower() for w in ["high", "surge", "growth", "buy", "positive", "win", "beat", "profit", "신고가", "급등", "성장", "흑자"]) else "Neutral ⚪"
+                            st.markdown(f"""
+                                <div style='background-color: #111111; padding: 10px; border-radius: 5px; border-left: 3px solid #FFFF00; margin-bottom: 5px;'>
+                                    <span style='font-size: 10px; color: #8a94a6;'>{sentiment}</span>
+                                    <p style='margin: 0; font-size: 13px;'>{title}</p>
+                                </div>
+                            """, unsafe_allow_html=True)
+                    else:
+                        st.info("최근 뉴스가 없습니다.")
+                        
             except Exception as e:
                 st.error(f"분석 오류: {e}")
 
@@ -382,45 +405,6 @@ if check_password():
         with tab4:
             st.subheader("📈 상세 기술적 분석 차트")
             render_ticker_report(st.session_state.get('selected_ticker'))
-                            st.write("### 🤖 AI 뉴스 감성 분석")
-                            news = yf.Ticker(selected_ticker).news
-                            if news:
-                                for item in news[:3]:
-                                    title = item['title']
-                                    # 간단한 감성 분석 시뮬레이션
-                                    score = 0
-                                    positive_words = ["high", "surge", "growth", "buy", "positive", "win", "beat", "profit", "신고가", "급등", "성장", "흑자"]
-                                    if any(word in title.lower() for word in positive_words):
-                                        sentiment = "Positive 🟢"
-                                    else:
-                                        sentiment = "Neutral ⚪"
-                                    
-                                    st.markdown(f"""
-                                        <div style='background-color: #111111; padding: 10px; border-radius: 5px; border-left: 3px solid #FFFF00; margin-bottom: 5px;'>
-                                            <span style='font-size: 10px; color: #8a94a6;'>{sentiment}</span>
-                                            <div style='font-size: 14px;'>{title}</div>
-                                        </div>
-                                    """, unsafe_allow_html=True)
-                            else:
-                                st.write("최근 관련 뉴스가 없습니다.")
-
-                        with col_bt:
-                            st.write("### 📊 가상 백테스트 (6개월)")
-                            # 6개월 전 대비 수익률 계산
-                            start_price = data['Close'].iloc[0]
-                            end_price = data['Close'].iloc[-1]
-                            return_pct = ((end_price - start_price) / start_price) * 100
-                            
-                            st.write(f"**6개월 전 가격:** {start_price:,.2f}")
-                            st.write(f"**현재 가격:** {end_price:,.2f}")
-                            st.metric("수익률 (6mo)", f"{return_pct:+.2f}%")
-                            
-                            st.caption("※ 6개월 전 매수 후 보유 시의 가상 수익률입니다.")
-
-                except Exception as e:
-                    st.error(f"차트 생성 중 오류가 발생했습니다: {e}")
-            else:
-                st.info("먼저 스캔을 진행하고 종목을 선택해주세요.")
 
     # --- 페이지 3: 리스크 관리 계산기 ---
     elif page == "🧮 리스크 관리 계산기":
