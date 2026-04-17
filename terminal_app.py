@@ -162,10 +162,13 @@ if check_password():
                     high_52w = hist['High'].max()
                     dist_from_high = ((current_price - high_52w) / high_52w) * 100
                     
+                    # 한국 주식 여부 판별 (.KS 또는 .KQ로 끝나는 경우)
+                    is_kr = ticker.endswith(".KS") or ticker.endswith(".KQ")
+                    
                     results.append({
                         "Ticker": ticker,
                         "Name": ticker_map.get(ticker, ticker), # 매핑된 이름 사용
-                        "Price": f"${current_price:.2f}" if any(c.isalpha() for c in ticker) else f"{int(current_price):,}원",
+                        "Price": f"{int(current_price):,}원" if is_kr else f"${current_price:.2f}",
                         "Change": f"{change_pct:+.2f}%",
                         "Vol Ratio": f"{vol_ratio:.2f}x",
                         "Position": "신고가" if dist_from_high > -1 else f"{dist_from_high:.1f}%",
@@ -297,20 +300,92 @@ if check_password():
                 
                 try:
                     with st.spinner("차트를 생성 중입니다..."):
-                        # 데이터 로드 (6개월치)
-                        data = yf.download(selected_ticker, period="6mo")
+                        # 데이터 로드 (1년치로 확장하여 지표 정확도 향상)
+                        data = yf.download(selected_ticker, period="1y")
                         
                         # 지표 계산
                         data['MA50'] = data['Close'].rolling(window=50).mean()
+                        data['MA150'] = data['Close'].rolling(window=150).mean()
                         data['MA200'] = data['Close'].rolling(window=200).mean()
                         
-                        # RSI 계산
+                        # Stan Weinstein 단계 판별
+                        curr_price = float(data['Close'].iloc[-1])
+                        ma150_curr = float(data['MA150'].iloc[-1])
+                        ma150_prev = float(data['MA150'].iloc[-20]) # 약 1달 전과 비교
+                        
+                        if curr_price > ma150_curr and ma150_curr > ma150_prev:
+                            stage = "2단계 (상승)"
+                            stage_color = "#00FF00"
+                        elif curr_price < ma150_curr and ma150_curr < ma150_prev:
+                            stage = "4단계 (하락)"
+                            stage_color = "#FF0000"
+                        elif curr_price > ma150_curr and ma150_curr <= ma150_prev:
+                            stage = "1단계 (바닥권)"
+                            stage_color = "#FFFF00"
+                        else:
+                            stage = "3단계 (천정권)"
+                            stage_color = "#FFA500"
+
+                        # RS (상대강도) 계산 - 최근 6개월 수익률 기반 (단순화)
+                        rs_score = ((curr_price - data['Close'].iloc[-126]) / data['Close'].iloc[-126]) * 100 if len(data) > 126 else 0
+                        
+                        # ROE 및 추가 정보 (필요한 때만 호출)
+                        stock_obj = yf.Ticker(selected_ticker)
+                        info = stock_obj.info
+                        roe = info.get('returnOnEquity', 0) * 100
+                        
+                        # 본데 관점 점수 계산 (100점 만점 가산제)
+                        bonde_score = 0
+                        if curr_price >= data['High'].max() * 0.97: bonde_score += 40 # 신고가 근처
+                        if rs_score > 25: bonde_score += 30 # 강력한 상대강도
+                        if roe > 15: bonde_score += 30 # 우수한 수익성
+                        
+                        # 최종 신호 및 가격 전략
+                        is_buy = bonde_score >= 70 and "2단계" in stage
+                        final_signal = "매수 적극 권장 (BUY)" if is_buy else "관망 및 대기 (HOLD)" if bonde_score >= 40 else "매수 금지 (AVOID)"
+                        signal_icon = "🟢" if is_buy else "🟡" if bonde_score >= 40 else "🔴"
+                        
+                        # 가격 전략 계산
+                        entry_p = curr_price
+                        stop_p = curr_price * 0.93 # 7% 손절 원칙
+                        target_p = curr_price * 1.25 # 25% 1차 목표
+                        
+                        # UI 출력: 신호등 대시보드
+                        st.markdown(f"""
+                            <div style='background-color: #111111; padding: 20px; border-radius: 15px; border: 2px solid {stage_color}; margin-bottom: 25px;'>
+                                <div style='display: flex; justify-content: space-between; align-items: center;'>
+                                    <div>
+                                        <span style='font-size: 14px; color: #8a94a6;'>FINAL SIGNAL</span>
+                                        <h2 style='margin: 0; color: {stage_color};'>{signal_icon} {final_signal}</h2>
+                                    </div>
+                                    <div style='text-align: right;'>
+                                        <span style='font-size: 14px; color: #8a94a6;'>BONDE SCORE</span>
+                                        <h2 style='margin: 0; color: #FFFF00;'>{bonde_score} / 100</h2>
+                                    </div>
+                                </div>
+                                <hr style='border: 0.5px solid #333; margin: 15px 0;'>
+                                <div style='display: flex; justify-content: space-around; text-align: center;'>
+                                    <div><span style='color:#8a94a6;'>매수가</span><br><b style='font-size:18px;'>{entry_p:,.0f}</b></div>
+                                    <div><span style='color:#FF4B4B;'>손절가</span><br><b style='font-size:18px;'>{stop_p:,.0f}</b></div>
+                                    <div><span style='color:#4ADE80;'>목표가</span><br><b style='font-size:18px;'>{target_p:,.0f}</b></div>
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # 지표 요약 컬럼
+                        c1, c2, c3, c4 = st.columns(4)
+                        c1.metric("ROE (수익성)", f"{roe:.1f}%")
+                        c2.metric("RS (상대강도)", f"{rs_score:.1f}")
+                        c3.metric("Weinstein 단계", stage)
+                        c4.metric("52주 최고가 대비", f"{((curr_price - data['High'].max())/data['High'].max()*100):.1f}%")
+
+                        # RSI 계산 복구
                         delta = data['Close'].diff()
                         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
                         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-                        rs = gain / loss
-                        data['RSI'] = 100 - (100 / (1+rs))
-                        
+                        rs_val = gain / loss
+                        data['RSI'] = 100 - (100 / (1+rs_val))
+
                         # 차트 생성
                         fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
                                            vertical_spacing=0.03, subplot_titles=(f'{selected_ticker} Candlestick', 'RSI'), 
@@ -326,14 +401,15 @@ if check_password():
 
                         # 이동평균선
                         fig.add_trace(go.Scatter(x=data.index, y=data['MA50'], line=dict(color='yellow', width=1), name='MA50'), row=1, col=1)
-                        fig.add_trace(go.Scatter(x=data.index, y=data['MA200'], line=dict(color='orange', width=1.5), name='MA200'), row=1, col=1)
+                        fig.add_trace(go.Scatter(x=data.index, y=data['MA150'], line=dict(color='cyan', width=1.5), name='MA150 (Weinstein)'), row=1, col=1)
+                        fig.add_trace(go.Scatter(x=data.index, y=data['MA200'], line=dict(color='orange', width=1), name='MA200'), row=1, col=1)
 
                         # RSI
                         fig.add_trace(go.Scatter(x=data.index, y=data['RSI'], line=dict(color='magenta', width=1), name='RSI'), row=2, col=1)
                         fig.add_hline(y=70, line_dash="dash", line_color="red", row=2, col=1)
                         fig.add_hline(y=30, line_dash="dash", line_color="green", row=2, col=1)
 
-                        # 레이아웃 설정 (터미널 테마와 어울리게 다크하게)
+                        # 레이아웃 설정
                         fig.update_layout(
                             template='plotly_dark',
                             height=600,
@@ -345,14 +421,10 @@ if check_password():
                         
                         st.plotly_chart(fig, use_container_width=True)
                         
-                        # 지표 요약
+                        # RSI 요약 추가
                         curr_rsi = data['RSI'].iloc[-1]
                         rsi_status = "과매수 (경계)" if curr_rsi > 70 else "과매도 (기회)" if curr_rsi < 30 else "중립"
-                        
-                        c1, c2, c3 = st.columns(3)
-                        c1.metric("현재 RSI", f"{curr_rsi:.1f}", rsi_status)
-                        c2.metric("50일 이평선", f"{data['MA50'].iloc[-1]:,.0f}")
-                        c3.metric("200일 이평선", f"{data['MA200'].iloc[-1]:,.0f}")
+                        st.write(f"📊 **현재 RSI:** {curr_rsi:.1f} ({rsi_status})")
 
                         # --- Phase 3: AI 뉴스 분석 & 백테스트 ---
                         st.markdown("---")
