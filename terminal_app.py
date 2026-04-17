@@ -9,6 +9,9 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 
+# 0. 페이지 설정
+st.set_page_config(page_title="Bonde-Turtle Terminal", page_icon="🐢", layout="wide")
+
 # 1. 암호 보안 설정 (암호: 1353)
 def check_password():
     if "password_correct" not in st.session_state:
@@ -18,7 +21,7 @@ def check_password():
         return True
 
     # 암호 입력 화면 UI
-    st.markdown("<h1 style='text-align: center; color: #FFFFFF;'>🔐 Anti-Gravity Private Terminal</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; color: #FFFF00;'>🔐 Bonde-Turtle Private Terminal</h1>", unsafe_allow_html=True)
     password = st.text_input("Access Code를 입력하십시오.", type="password")
     if st.button("Unlock"):
         if password == "1353":
@@ -30,6 +33,7 @@ def check_password():
 
 if check_password():
     # 사이드바 레이아웃 및 페이지 네비게이션
+    st.sidebar.markdown("<h2 style='color: #FFFF00;'>🐢 Bonde-Turtle</h2>", unsafe_allow_html=True)
     st.sidebar.title("💎 Master Menu")
 
     # 실시간 시간 표시 (한국 & 미국)
@@ -39,98 +43,82 @@ if check_password():
     now_est = datetime.now(est)
 
     st.sidebar.markdown(f"""
-        <div style='background-color: #1e2129; padding: 15px; border-radius: 10px; border: 1px solid #3d4450; margin-bottom: 20px;'>
+        <div style='background-color: #111111; padding: 15px; border-radius: 10px; border: 1px solid #FFFF00; margin-bottom: 20px;'>
             <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;'>
-                <span style='font-size: 12px; color: #8a94a6;'>🇰🇷 KOREA (KST)</span>
+                <span style='font-size: 12px; color: #FFFF00;'>🇰🇷 KOREA (KST)</span>
                 <span style='font-size: 10px; color: #4ade80;'>LIVE</span>
             </div>
             <div style='font-size: 18px; color: #FFFF00; font-family: monospace; font-weight: bold;'>{now_kst.strftime('%H:%M:%S')}</div>
-            <div style='font-size: 12px; color: #FFFFFF;'>{now_kst.strftime('%Y-%m-%d')}</div>
-            <hr style='margin: 10px 0; border: none; border-top: 1px solid #3d4450;'>
+            <div style='font-size: 12px; color: #FFFF00;'>{now_kst.strftime('%Y-%m-%d')}</div>
+            <hr style='margin: 10px 0; border: none; border-top: 1px solid #FFFF00;'>
             <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;'>
-                <span style='font-size: 12px; color: #8a94a6;'>🇺🇸 USA (ET)</span>
+                <span style='font-size: 12px; color: #FFFF00;'>🇺🇸 USA (ET)</span>
                 <span style='font-size: 10px; color: #4ade80;'>MARKET</span>
             </div>
             <div style='font-size: 18px; color: #FFFF00; font-family: monospace; font-weight: bold;'>{now_est.strftime('%H:%M:%S')}</div>
-            <div style='font-size: 12px; color: #FFFFFF;'>{now_est.strftime('%Y-%m-%d')}</div>
+            <div style='font-size: 12px; color: #FFFF00;'>{now_est.strftime('%Y-%m-%d')}</div>
         </div>
     """, unsafe_allow_html=True)
 
     page = st.sidebar.radio("Go to", ["🎯 주도주 타점 스캐너", "📈 실시간 분석 차트", "🧮 리스크 관리 계산기", "📰 실시간 뉴스 피드", "📊 본데 주식 50선", "💎 마스터 클래스"])
 
-    # 공통 스타일 설정 (블랙 & 화이트 & 옐로우 포인트)
+    # 공통 스타일 설정 (전체 노란색 테마)
     st.markdown("""
         <style>
-        /* 전체 배경 및 폰트 설정 */
+        /* 전체 배경 */
         .main, .stApp, [data-testid="stSidebar"], [data-testid="stHeader"] { 
             background-color: #000000 !important; 
-            background-image: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)) !important;
-            background-size: 100% 4px, 3px 100% !important;
         }
         
-        /* 모바일 최적화: 여백 조정 */
-        @media (max-width: 640px) {
-            .main .block-container {
-                padding: 1rem 0.5rem !important;
-            }
-            h1 { font-size: 1.8rem !important; }
-            h2 { font-size: 1.5rem !important; }
-            h3 { font-size: 1.2rem !important; }
-            [data-testid="stMetricValue"] { font-size: 1.5rem !important; }
-        }
-
-        /* 터미널 스캔라인 효과 */
-        .stApp::before {
-            content: " ";
-            display: block;
-            position: absolute;
-            top: 0; left: 0; bottom: 0; right: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
-            z-index: 2;
-            background-size: 100% 2px, 3px 100%;
-            pointer-events: none;
-        }
-
-        /* 기본 텍스트 흰색 */
-        .stMarkdown:not(div[data-testid="stNotification"] *), .stText, p, span:not(div[data-testid="stNotification"] *), td, th, li { 
-            color: #FFFFFF !important; 
+        /* 모든 텍스트 노란색 강제 적용 */
+        * {
+            color: #FFFF00 !important;
             font-family: 'Courier New', Courier, monospace !important;
         }
-        
-        /* 헤더 노란색 + 빛남 효과 */
-        h1, h2, h3, h4, h5, h6, [data-testid="stMetricLabel"] { 
+
+        /* 메트릭 및 위젯 예외 처리 (노란색 유지) */
+        [data-testid="stMetricValue"], [data-testid="stMetricLabel"] {
+            color: #FFFF00 !important;
+        }
+
+        /* 헤더 스타일 */
+        h1, h2, h3, h4, h5, h6 { 
             color: #FFFF00 !important; 
-            font-weight: 900 !important;
-            text-shadow: 0 0 5px rgba(255, 255, 0, 0.5), 0 0 10px rgba(255, 255, 0, 0.3) !important;
+            text-shadow: 0 0 10px rgba(255, 255, 0, 0.5) !important;
         }
         
         /* 버튼 스타일 */
         .stButton>button {
-            width: 100% !important; /* 모바일에서 클릭하기 쉽게 너비 조정 */
-            background-color: #111111 !important;
+            background-color: #000000 !important;
             color: #FFFF00 !important;
-            border: 1px solid #FFFF00 !important;
-            border-radius: 5px !important;
-            padding: 10px !important;
+            border: 2px solid #FFFF00 !important;
         }
         .stButton>button:hover {
             background-color: #FFFF00 !important;
             color: #000000 !important;
-            box-shadow: 0 0 15px rgba(255, 255, 0, 0.6);
         }
 
-        /* 데이터프레임 모바일 가독성 */
+        /* 탭 스타일 */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 10px;
+        }
+        .stTabs [data-baseweb="tab"] {
+            color: #FFFF00 !important;
+            border: 1px solid #FFFF00 !important;
+            padding: 5px 15px !important;
+        }
+
+        /* 데이터프레임 */
         [data-testid="stTable"], [data-testid="stDataFrame"] {
-            background-color: #000000 !important;
-            border: 1px solid #333 !important;
+            border: 1px solid #FFFF00 !important;
         }
         </style>
     """, unsafe_allow_html=True)
 
     # --- 페이지 1: 주도주 타점 스캐너 ---
     if page == "🎯 주도주 타점 스캐너":
-        st.markdown("<h1 style='white-space: nowrap;'>🎯 본데의 주식스캐너</h1>", unsafe_allow_html=True)
-        st.markdown("<h3 style='color: #FFFFFF; opacity: 0.8;'>✨ 실시간 시장 데이터 기반 주도주 포착</h3>", unsafe_allow_html=True)
+        st.markdown("<h1 style='white-space: nowrap;'>🎯 Bonde-Turtle Terminal</h1>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color: #FFFF00; opacity: 0.9;'>✨ 실시간 시장 데이터 기반 주도주 포착</h3>", unsafe_allow_html=True)
         
         # --- 리얼타임 스캐너 엔진 로직 ---
         def get_scanner_data(tickers):
