@@ -256,7 +256,32 @@ if check_password():
 
         with tab3:
             st.subheader("🤫 조용한 눌림목 (Anticipation)")
-            st.write("준비 중인 기능입니다.")
+            if 'scanner_df' in st.session_state:
+                df = st.session_state['scanner_df']
+                # 조건: 변동폭 작음(-1.5%~1.5%) AND 거래량 감소(1.0x 미만)
+                # Position 정보가 '% '를 포함하므로 숫자로 변환하여 고가 인근(-15% 이내) 체크
+                def parse_pos(x):
+                    try:
+                        if x == "신고가": return 0
+                        return float(x.replace('%', ''))
+                    except: return -99
+                
+                df['_pos_val'] = df['Position'].apply(parse_pos)
+                anti_df = df[
+                    (df['_change_val'].abs() <= 1.5) & 
+                    (df['_vol_val'] <= 1.0) &
+                    (df['_pos_val'] >= -15.0)
+                ].sort_values(by='_vol_val', ascending=True)
+                
+                if not anti_df.empty:
+                    st.caption("조건: 변동폭 축소(-1.5%~1.5%) | 거래량 감소(평균 이하) | 전고점 인근 응축 종목")
+                    st.dataframe(anti_df.drop(columns=['_change_val', '_vol_val', '_pos_val']), use_container_width=True, hide_index=True)
+                    if not selected_ticker:
+                        selected_ticker = st.selectbox("분석할 종목 선택 (Anti)", anti_df['Ticker'].tolist())
+                else:
+                    st.info("현재 조용히 에너지를 응축 중인(눌림목) 종목이 없습니다.")
+            else:
+                st.write("데이터를 먼저 스캔하세요.")
 
         with tab4:
             st.subheader("📈 상세 기술적 분석 차트")
