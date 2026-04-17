@@ -229,212 +229,159 @@ if check_password():
         # 탭 구성
         tab1, tab2, tab3, tab4 = st.tabs(["🔥 1. 모멘텀 버스트 (MB)", "🚀 2. 실적 홈런주 (EP)", "🤫 3. 조용한 눌림목 (Anticipation)", "📈 상세 기술적 분석"])
 
-        selected_ticker = None
+        if 'selected_ticker' not in st.session_state:
+            st.session_state['selected_ticker'] = None
+
+        # --- 상세 분석 리포트 함수 ---
+        def render_ticker_report(selected_ticker):
+            if not selected_ticker:
+                return
+            
+            st.markdown("---")
+            st.write(f"### 📊 {selected_ticker} 상세 분석 보고서")
+            
+            try:
+                with st.spinner("데이터를 분석 중입니다..."):
+                    # 데이터 로드 (1년치)
+                    data = yf.download(selected_ticker, period="1y", progress=False)
+                    if data.empty:
+                        st.error("데이터를 불러오지 못했습니다.")
+                        return
+                        
+                    if isinstance(data.columns, pd.MultiIndex):
+                        data.columns = data.columns.get_level_values(0)
+                    
+                    # 지표 계산
+                    data['MA50'] = data['Close'].rolling(window=50).mean()
+                    data['MA150'] = data['Close'].rolling(window=150).mean()
+                    data['MA200'] = data['Close'].rolling(window=200).mean()
+                    
+                    # Stan Weinstein 단계 판별
+                    curr_price = float(data['Close'].iloc[-1])
+                    ma150_curr = float(data['MA150'].iloc[-1])
+                    ma150_prev = float(data['MA150'].iloc[-20])
+                    
+                    if curr_price > ma150_curr and ma150_curr > ma150_prev:
+                        stage, stage_color = "2단계 (상승)", "#00FF00"
+                    elif curr_price < ma150_curr and ma150_curr < ma150_prev:
+                        stage, stage_color = "4단계 (하락)", "#FF0000"
+                    elif curr_price > ma150_curr and ma150_curr <= ma150_prev:
+                        stage, stage_color = "1단계 (바닥권)", "#FFFF00"
+                    else:
+                        stage, stage_color = "3단계 (천정권)", "#FFA500"
+
+                    # RS (상대강도)
+                    rs_score = ((curr_price - data['Close'].iloc[-126]) / data['Close'].iloc[-126]) * 100 if len(data) > 126 else 0
+                    
+                    # ROE (info)
+                    stock_obj = yf.Ticker(selected_ticker)
+                    info = stock_obj.info
+                    roe = info.get('returnOnEquity', 0) * 100
+                    
+                    # 본데 점수
+                    bonde_score = 0
+                    if curr_price >= data['High'].max() * 0.97: bonde_score += 40
+                    if rs_score > 25: bonde_score += 30
+                    if roe > 15: bonde_score += 30
+                    
+                    # 신호 및 가격 전략
+                    is_buy = bonde_score >= 70 and "2단계" in stage
+                    final_signal = "매수 적극 권장 (BUY)" if is_buy else "관망 및 대기 (HOLD)" if bonde_score >= 40 else "매수 금지 (AVOID)"
+                    signal_icon = "🟢" if is_buy else "🟡" if bonde_score >= 40 else "🔴"
+                    
+                    is_kr = selected_ticker.endswith(".KS") or selected_ticker.endswith(".KQ")
+                    entry_p = f"{int(curr_price):,}원" if is_kr else f"${curr_price:.2f}"
+                    stop_p = f"{int(curr_price * 0.93):,}원" if is_kr else f"${(curr_price * 0.93):.2f}"
+                    target_p = f"{int(curr_price * 1.25):,}원" if is_kr else f"${(curr_price * 1.25):.2f}"
+                    
+                    # UI 출력: 신호등 대시보드
+                    st.markdown(f"""
+                        <div style='background-color: #111111; padding: 20px; border-radius: 15px; border: 2px solid {stage_color}; margin-bottom: 25px;'>
+                            <div style='display: flex; justify-content: space-between; align-items: center;'>
+                                <div>
+                                    <span style='font-size: 14px; color: #8a94a6;'>FINAL SIGNAL</span>
+                                    <h2 style='margin: 0; color: {stage_color};'>{signal_icon} {final_signal}</h2>
+                                </div>
+                                <div style='text-align: right;'>
+                                    <span style='font-size: 14px; color: #8a94a6;'>BONDE SCORE</span>
+                                    <h2 style='margin: 0; color: #FFFF00;'>{bonde_score} / 100</h2>
+                                </div>
+                            </div>
+                            <hr style='border: 0.5px solid #333; margin: 15px 0;'>
+                            <div style='display: flex; justify-content: space-around; text-align: center;'>
+                                <div><span style='color:#8a94a6;'>매수가</span><br><b style='font-size:18px;'>{entry_p}</b></div>
+                                <div><span style='color:#FF4B4B;'>손절가</span><br><b style='font-size:18px;'>{stop_p}</b></div>
+                                <div><span style='color:#4ADE80;'>목표가</span><br><b style='font-size:18px;'>{target_p}</b></div>
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    c1, c2, c3, c4 = st.columns(4)
+                    c1.metric("ROE (수익성)", f"{roe:.1f}%")
+                    c2.metric("RS (상대강도)", f"{rs_score:.1f}")
+                    c3.metric("Weinstein 단계", stage)
+                    c4.metric("52주 최고가 대비", f"{((curr_price - data['High'].max())/data['High'].max()*100):.1f}%")
+
+                    # 차트
+                    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_width=[0.3, 0.7])
+                    fig.add_trace(go.Candlestick(x=data.index, open=data['Open'], high=data['High'], low=data['Low'], close=data['Close'], name='Price'), row=1, col=1)
+                    fig.add_trace(go.Scatter(x=data.index, y=data['MA50'], line=dict(color='yellow', width=1), name='MA50'), row=1, col=1)
+                    fig.add_trace(go.Scatter(x=data.index, y=data['MA150'], line=dict(color='cyan', width=1.5), name='MA150'), row=1, col=1)
+                    fig.add_trace(go.Scatter(x=data.index, y=data['MA200'], line=dict(color='orange', width=1), name='MA200'), row=1, col=1)
+                    
+                    # RSI
+                    delta = data['Close'].diff()
+                    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+                    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+                    rs_val = gain / loss
+                    data['RSI'] = 100 - (100 / (1+rs_val))
+                    fig.add_trace(go.Scatter(x=data.index, y=data['RSI'], line=dict(color='magenta', width=1), name='RSI'), row=2, col=1)
+                    fig.add_hline(y=70, line_dash="dash", line_color="red", row=2, col=1)
+                    fig.add_hline(y=30, line_dash="dash", line_color="green", row=2, col=1)
+                    
+                    fig.update_layout(template='plotly_dark', height=500, showlegend=True, xaxis_rangeslider_visible=False, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                    st.plotly_chart(fig, use_container_width=True)
+            except Exception as e:
+                st.error(f"분석 오류: {e}")
 
         with tab1:
             st.subheader("🔥 모멘텀 버스트 (Momentum Burst) 실시간")
-            st.caption("조건: 당일 4% 이상 상승 | 거래량 폭증 | 추세 강화 종목")
-            
             if 'scanner_df' in st.session_state:
-                df = st.session_state['scanner_df']
-                mb_df = df[df['_change_val'] >= 4].sort_values(by='_change_val', ascending=False)
-                
+                mb_df = st.session_state['scanner_df'][st.session_state['scanner_df']['_change_val'] >= 4].sort_values(by='_change_val', ascending=False)
                 if not mb_df.empty:
-                    display_df = mb_df.drop(columns=['_change_val', '_vol_val'])
-                    st.dataframe(display_df, use_container_width=True, hide_index=True)
-                    # 분석할 종목 선택
-                    selected_ticker = st.selectbox("분석할 종목 선택 (MB)", mb_df['Ticker'].tolist())
-                else:
-                    st.warning("현재 조건(상승률 4% 이상)을 만족하는 종목이 없습니다.")
-            else:
-                st.write("위의 '스캔 시작' 버튼을 눌러 데이터를 불러오세요.")
+                    st.dataframe(mb_df.drop(columns=['_change_val', '_vol_val']), use_container_width=True, hide_index=True)
+                    st.session_state['selected_ticker'] = st.selectbox("상세 분석할 종목 선택 (MB)", mb_df['Ticker'].tolist())
+                    render_ticker_report(st.session_state['selected_ticker'])
+                else: st.warning("조건을 만족하는 종목이 없습니다.")
 
         with tab2:
             st.subheader("🚀 실시간 에피소딕 피봇 (EP) 탐색")
             if 'scanner_df' in st.session_state:
-                df = st.session_state['scanner_df']
-                ep_df = df[df['_vol_val'] >= 2.5].sort_values(by='_vol_val', ascending=False)
+                ep_df = st.session_state['scanner_df'][st.session_state['scanner_df']['_vol_val'] >= 2.5].sort_values(by='_vol_val', ascending=False)
                 if not ep_df.empty:
                     st.dataframe(ep_df.drop(columns=['_change_val', '_vol_val']), use_container_width=True, hide_index=True)
-                    if not selected_ticker:
-                        selected_ticker = st.selectbox("분석할 종목 선택 (EP)", ep_df['Ticker'].tolist())
-                else:
-                    st.info("거래량이 평소보다 2.5배 이상 폭증한 종목이 아직 없습니다.")
-            else:
-                st.write("데이터를 먼저 스캔하세요.")
+                    st.session_state['selected_ticker'] = st.selectbox("상세 분석할 종목 선택 (EP)", ep_df['Ticker'].tolist())
+                    render_ticker_report(st.session_state['selected_ticker'])
+                else: st.info("조건을 만족하는 종목이 없습니다.")
 
         with tab3:
             st.subheader("🤫 조용한 눌림목 (Anticipation)")
             if 'scanner_df' in st.session_state:
                 df = st.session_state['scanner_df']
-                # 조건: 변동폭 작음(-1.5%~1.5%) AND 거래량 감소(1.0x 미만)
-                # Position 정보가 '% '를 포함하므로 숫자로 변환하여 고가 인근(-15% 이내) 체크
                 def parse_pos(x):
-                    try:
-                        if x == "신고가": return 0
-                        return float(x.replace('%', ''))
+                    try: return 0 if x == "신고가" else float(x.replace('%', ''))
                     except: return -99
-                
                 df['_pos_val'] = df['Position'].apply(parse_pos)
-                anti_df = df[
-                    (df['_change_val'].abs() <= 1.5) & 
-                    (df['_vol_val'] <= 1.0) &
-                    (df['_pos_val'] >= -15.0)
-                ].sort_values(by='_vol_val', ascending=True)
-                
+                anti_df = df[(df['_change_val'].abs() <= 1.5) & (df['_vol_val'] <= 1.0) & (df['_pos_val'] >= -15.0)].sort_values(by='_vol_val', ascending=True)
                 if not anti_df.empty:
-                    st.caption("조건: 변동폭 축소(-1.5%~1.5%) | 거래량 감소(평균 이하) | 전고점 인근 응축 종목")
                     st.dataframe(anti_df.drop(columns=['_change_val', '_vol_val', '_pos_val']), use_container_width=True, hide_index=True)
-                    if not selected_ticker:
-                        selected_ticker = st.selectbox("분석할 종목 선택 (Anti)", anti_df['Ticker'].tolist())
-                else:
-                    st.info("현재 조용히 에너지를 응축 중인(눌림목) 종목이 없습니다.")
-            else:
-                st.write("데이터를 먼저 스캔하세요.")
+                    st.session_state['selected_ticker'] = st.selectbox("상세 분석할 종목 선택 (Anti)", anti_df['Ticker'].tolist())
+                    render_ticker_report(st.session_state['selected_ticker'])
+                else: st.info("조건을 만족하는 종목이 없습니다.")
 
         with tab4:
             st.subheader("📈 상세 기술적 분석 차트")
-            
-            if selected_ticker:
-                st.write(f"### {selected_ticker} 분석 보고서")
-                
-                try:
-                    with st.spinner("차트를 생성 중입니다..."):
-                        # 데이터 로드 (1년치로 확장하여 지표 정확도 향상)
-                        data = yf.download(selected_ticker, period="1y", progress=False)
-                        
-                        # yfinance v0.2.x+ 멀티인덱스 컬럼 처리
-                        if isinstance(data.columns, pd.MultiIndex):
-                            data.columns = data.columns.get_level_values(0)
-                        
-                        # 지표 계산
-                        data['MA50'] = data['Close'].rolling(window=50).mean()
-                        data['MA150'] = data['Close'].rolling(window=150).mean()
-                        data['MA200'] = data['Close'].rolling(window=200).mean()
-                        
-                        # Stan Weinstein 단계 판별
-                        curr_price = float(data['Close'].iloc[-1])
-                        ma150_curr = float(data['MA150'].iloc[-1])
-                        ma150_prev = float(data['MA150'].iloc[-20]) # 약 1달 전과 비교
-                        
-                        if curr_price > ma150_curr and ma150_curr > ma150_prev:
-                            stage = "2단계 (상승)"
-                            stage_color = "#00FF00"
-                        elif curr_price < ma150_curr and ma150_curr < ma150_prev:
-                            stage = "4단계 (하락)"
-                            stage_color = "#FF0000"
-                        elif curr_price > ma150_curr and ma150_curr <= ma150_prev:
-                            stage = "1단계 (바닥권)"
-                            stage_color = "#FFFF00"
-                        else:
-                            stage = "3단계 (천정권)"
-                            stage_color = "#FFA500"
-
-                        # RS (상대강도) 계산 - 최근 6개월 수익률 기반 (단순화)
-                        rs_score = ((curr_price - data['Close'].iloc[-126]) / data['Close'].iloc[-126]) * 100 if len(data) > 126 else 0
-                        
-                        # ROE 및 추가 정보 (필요한 때만 호출)
-                        stock_obj = yf.Ticker(selected_ticker)
-                        info = stock_obj.info
-                        roe = info.get('returnOnEquity', 0) * 100
-                        
-                        # 본데 관점 점수 계산 (100점 만점 가산제)
-                        bonde_score = 0
-                        if curr_price >= data['High'].max() * 0.97: bonde_score += 40 # 신고가 근처
-                        if rs_score > 25: bonde_score += 30 # 강력한 상대강도
-                        if roe > 15: bonde_score += 30 # 우수한 수익성
-                        
-                        # 최종 신호 및 가격 전략
-                        is_buy = bonde_score >= 70 and "2단계" in stage
-                        final_signal = "매수 적극 권장 (BUY)" if is_buy else "관망 및 대기 (HOLD)" if bonde_score >= 40 else "매수 금지 (AVOID)"
-                        signal_icon = "🟢" if is_buy else "🟡" if bonde_score >= 40 else "🔴"
-                        
-                        # 가격 전략 계산
-                        entry_p = curr_price
-                        stop_p = curr_price * 0.93 # 7% 손절 원칙
-                        target_p = curr_price * 1.25 # 25% 1차 목표
-                        
-                        # UI 출력: 신호등 대시보드
-                        st.markdown(f"""
-                            <div style='background-color: #111111; padding: 20px; border-radius: 15px; border: 2px solid {stage_color}; margin-bottom: 25px;'>
-                                <div style='display: flex; justify-content: space-between; align-items: center;'>
-                                    <div>
-                                        <span style='font-size: 14px; color: #8a94a6;'>FINAL SIGNAL</span>
-                                        <h2 style='margin: 0; color: {stage_color};'>{signal_icon} {final_signal}</h2>
-                                    </div>
-                                    <div style='text-align: right;'>
-                                        <span style='font-size: 14px; color: #8a94a6;'>BONDE SCORE</span>
-                                        <h2 style='margin: 0; color: #FFFF00;'>{bonde_score} / 100</h2>
-                                    </div>
-                                </div>
-                                <hr style='border: 0.5px solid #333; margin: 15px 0;'>
-                                <div style='display: flex; justify-content: space-around; text-align: center;'>
-                                    <div><span style='color:#8a94a6;'>매수가</span><br><b style='font-size:18px;'>{entry_p:,.0f}</b></div>
-                                    <div><span style='color:#FF4B4B;'>손절가</span><br><b style='font-size:18px;'>{stop_p:,.0f}</b></div>
-                                    <div><span style='color:#4ADE80;'>목표가</span><br><b style='font-size:18px;'>{target_p:,.0f}</b></div>
-                                </div>
-                            </div>
-                        """, unsafe_allow_html=True)
-                        
-                        # 지표 요약 컬럼
-                        c1, c2, c3, c4 = st.columns(4)
-                        c1.metric("ROE (수익성)", f"{roe:.1f}%")
-                        c2.metric("RS (상대강도)", f"{rs_score:.1f}")
-                        c3.metric("Weinstein 단계", stage)
-                        c4.metric("52주 최고가 대비", f"{((curr_price - data['High'].max())/data['High'].max()*100):.1f}%")
-
-                        # RSI 계산 복구
-                        delta = data['Close'].diff()
-                        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-                        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-                        rs_val = gain / loss
-                        data['RSI'] = 100 - (100 / (1+rs_val))
-
-                        # 차트 생성
-                        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
-                                           vertical_spacing=0.03, subplot_titles=(f'{selected_ticker} Candlestick', 'RSI'), 
-                                           row_width=[0.3, 0.7])
-
-                        # 캔들스틱
-                        fig.add_trace(go.Candlestick(x=data.index,
-                                        open=data['Open'],
-                                        high=data['High'],
-                                        low=data['Low'],
-                                        close=data['Close'],
-                                        name='Price'), row=1, col=1)
-
-                        # 이동평균선
-                        fig.add_trace(go.Scatter(x=data.index, y=data['MA50'], line=dict(color='yellow', width=1), name='MA50'), row=1, col=1)
-                        fig.add_trace(go.Scatter(x=data.index, y=data['MA150'], line=dict(color='cyan', width=1.5), name='MA150 (Weinstein)'), row=1, col=1)
-                        fig.add_trace(go.Scatter(x=data.index, y=data['MA200'], line=dict(color='orange', width=1), name='MA200'), row=1, col=1)
-
-                        # RSI
-                        fig.add_trace(go.Scatter(x=data.index, y=data['RSI'], line=dict(color='magenta', width=1), name='RSI'), row=2, col=1)
-                        fig.add_hline(y=70, line_dash="dash", line_color="red", row=2, col=1)
-                        fig.add_hline(y=30, line_dash="dash", line_color="green", row=2, col=1)
-
-                        # 레이아웃 설정
-                        fig.update_layout(
-                            template='plotly_dark',
-                            height=600,
-                            showlegend=True,
-                            xaxis_rangeslider_visible=False,
-                            paper_bgcolor='rgba(0,0,0,0)',
-                            plot_bgcolor='rgba(0,0,0,0)'
-                        )
-                        
-                        st.plotly_chart(fig, use_container_width=True)
-                        
-                        # RSI 요약 추가
-                        curr_rsi = data['RSI'].iloc[-1]
-                        rsi_status = "과매수 (경계)" if curr_rsi > 70 else "과매도 (기회)" if curr_rsi < 30 else "중립"
-                        st.write(f"📊 **현재 RSI:** {curr_rsi:.1f} ({rsi_status})")
-
-                        # --- Phase 3: AI 뉴스 분석 & 백테스트 ---
-                        st.markdown("---")
-                        col_ai, col_bt = st.columns(2)
-                        
-                        with col_ai:
+            render_ticker_report(st.session_state.get('selected_ticker'))
                             st.write("### 🤖 AI 뉴스 감성 분석")
                             news = yf.Ticker(selected_ticker).news
                             if news:
