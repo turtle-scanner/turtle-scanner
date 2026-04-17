@@ -18,7 +18,7 @@ def check_password():
     st.markdown("<h1 style='text-align: center; color: #FFFFFF;'>🔐 Anti-Gravity Private Terminal</h1>", unsafe_allow_html=True)
     password = st.text_input("Access Code를 입력하십시오.", type="password")
     if st.button("Unlock"):
-        if password == "6431353":
+        if password == "1353":
             st.session_state["password_correct"] = True
             st.rerun()
         else:
@@ -41,15 +41,15 @@ if check_password():
                 <span style='font-size: 12px; color: #8a94a6;'>🇰🇷 KOREA (KST)</span>
                 <span style='font-size: 10px; color: #4ade80;'>LIVE</span>
             </div>
-            <div style='font-size: 18px; color: #ffffff; font-family: monospace; font-weight: bold;'>{now_kst.strftime('%H:%M:%S')}</div>
-            <div style='font-size: 12px; color: #5c6370;'>{now_kst.strftime('%Y-%m-%d')}</div>
+            <div style='font-size: 18px; color: #FFFF00; font-family: monospace; font-weight: bold;'>{now_kst.strftime('%H:%M:%S')}</div>
+            <div style='font-size: 12px; color: #FFFFFF;'>{now_kst.strftime('%Y-%m-%d')}</div>
             <hr style='margin: 10px 0; border: none; border-top: 1px solid #3d4450;'>
             <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;'>
                 <span style='font-size: 12px; color: #8a94a6;'>🇺🇸 USA (ET)</span>
                 <span style='font-size: 10px; color: #4ade80;'>MARKET</span>
             </div>
-            <div style='font-size: 18px; color: #ffffff; font-family: monospace; font-weight: bold;'>{now_est.strftime('%H:%M:%S')}</div>
-            <div style='font-size: 12px; color: #5c6370;'>{now_est.strftime('%Y-%m-%d')}</div>
+            <div style='font-size: 18px; color: #FFFF00; font-family: monospace; font-weight: bold;'>{now_est.strftime('%H:%M:%S')}</div>
+            <div style='font-size: 12px; color: #FFFFFF;'>{now_est.strftime('%Y-%m-%d')}</div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -69,7 +69,7 @@ if check_password():
         }
         
         /* 헤더 및 중요 텍스트 노란색 */
-        h1, h2, h3, [data-testid="stMetricLabel"] { 
+        h1, h2, h3, h4, h5, h6, [data-testid="stMetricLabel"] { 
             color: #FFFF00 !important; 
             font-weight: 900 !important;
             text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
