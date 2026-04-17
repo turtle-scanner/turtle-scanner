@@ -235,7 +235,7 @@
             
             <div class="input-group">
                 <label for="target-name">평가 대상자 선택</label>
-                <select id="target-name">
+                <select id="target-name" onchange="updateStudentPhoto()">
                     <option value="" disabled selected>학생 이름을 선택하세요</option>
                     <option value="종학">종학</option>
                     <option value="예담">예담</option>
@@ -243,6 +243,11 @@
                     <option value="정욱">정욱</option>
                     <option value="우민">우민</option>
                 </select>
+            </div>
+
+            <div id="student-photo-container" class="hidden" style="text-align: center; margin-bottom: 25px;">
+                <img id="student-photo" src="" style="width: 150px; height: 150px; border-radius: 50%; border: 3px solid #FFFF00; object-fit: cover;">
+                <p id="student-name-display" style="color: #FFFF00; font-weight: bold; margin-top: 10px;"></p>
             </div>
 
             <label>종합 등급 선택</label>
@@ -342,6 +347,30 @@
             "3": "I: 기본점수. 과제 제출했으나 결과물 없음."
         };
 
+        function updateStudentPhoto() {
+            const select = document.getElementById('target-name');
+            const name = select.value;
+            const container = document.getElementById('student-photo-container');
+            const img = document.getElementById('student-photo');
+            const nameDisplay = document.getElementById('student-name-display');
+
+            const photoMap = {
+                "종학": "student_jonghak.png",
+                "예담": "student_yedam.png",
+                "보성": "student_bosung.png",
+                "정욱": "student_jeonguk.png",
+                "우민": "student_woomin.png"
+            };
+
+            if (name && photoMap[name]) {
+                img.src = photoMap[name];
+                nameDisplay.innerText = name;
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+
         function checkPassword() {
             const pw = document.getElementById('access-password').value;
             if (pw === ACCESS_PASSWORD) {
@@ -404,6 +433,7 @@
             document.getElementById('feedback').value = '';
             document.getElementById('total-score').innerText = '0';
             document.getElementById('grade-info').innerText = '등급을 선택하면 기준이 표시됩니다.';
+            document.getElementById('student-photo-container').classList.add('hidden');
             
             const grades = document.getElementsByName('grade');
             for (const g of grades) g.checked = false;
