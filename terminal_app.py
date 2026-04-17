@@ -138,28 +138,27 @@ if check_password():
             for ticker in tickers:
                 try:
                     stock = yf.Ticker(ticker)
-                    # 최신 5일치 데이터 (어제 종가 대비 오늘 가격 및 평균 거래량 계산용)
-                    hist = stock.history(period="10d")
-                    if len(hist) < 2: continue
+                    # 최신 1년치 데이터 (52주 고점 및 최신 변동성 계산용)
+                    hist = stock.history(period="1y")
+                    if len(hist) < 2: 
+                        continue
                     
                     current_price = hist['Close'].iloc[-1]
                     prev_close = hist['Close'].iloc[-2]
                     change_pct = ((current_price - prev_close) / prev_close) * 100
                     
-                    # 거래량 비율 (오늘 거래량 / 5일 평균 거래량)
-                    avg_volume = hist['Volume'].iloc[:-1].mean()
+                    # 거래량 비율 (오늘 거래량 / 10일 평균 거래량)
+                    avg_volume = hist['Volume'].iloc[-11:-1].mean() if len(hist) > 10 else hist['Volume'].iloc[:-1].mean()
                     current_volume = hist['Volume'].iloc[-1]
                     vol_ratio = current_volume / avg_volume if avg_volume > 0 else 0
                     
-                    # 52주 고점 정보 (캐시된 정보 사용 시도)
-                    info = stock.info
-                    high_52w = info.get('fiftyTwoWeekHigh', current_price)
+                    # 52주 고점 정보 (history 데이터에서 직접 계산)
+                    high_52w = hist['High'].max()
                     dist_from_high = ((current_price - high_52w) / high_52w) * 100
                     
-                    # TI65 (단순화: 20일 이동평균선 대비 위치)
                     results.append({
                         "Ticker": ticker,
-                        "Name": info.get('shortName', ticker),
+                        "Name": ticker, # info 요청 생략으로 속도 향상
                         "Price": f"${current_price:.2f}" if any(c.isalpha() for c in ticker) else f"{int(current_price):,}원",
                         "Change": f"{change_pct:+.2f}%",
                         "Vol Ratio": f"{vol_ratio:.2f}x",
@@ -167,7 +166,8 @@ if check_password():
                         "_change_val": change_pct,
                         "_vol_val": vol_ratio
                     })
-                except Exception:
+                except Exception as e:
+                    print(f"Error fetching {ticker}: {e}")
                     continue
             return pd.DataFrame(results)
 
